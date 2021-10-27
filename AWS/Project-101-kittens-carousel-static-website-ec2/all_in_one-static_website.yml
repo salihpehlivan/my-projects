@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: |
+  Kittens Carousel is a static website application deployed with Apache Web Server on AWS Elastic Compute Cloud (EC2) Instance using AWS Cloudformation Service.
+  It launch ec2 with security group that enables SSH conection.
+
+Parameters:
+  keyName:
+    Description: Please select one of your key 
+    Type: AWS::EC2::KeyPair::KeyName
+  instanceType:
+    Description: Please select the instance type below
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - t3.micro
+      - t3a.micro
+      - t2.nano
+      - t3.nano
+
+Mappings:
+  regionImageMap:
+    us-east-1:
+      AMI: ami-0742b4e673072066f
+    us-east-2:
+      AMI: ami-05d72852800cbf29e
+    us-west-1:
+      AMI: ami-0577b787189839998
+    us-west-2:
+      AMI: ami-0518bb0e75d3619ca
+    eu-west-1:
+      AMI: ami-0ffea00000f287d30  
+
+Resources:
+  WebServerSecGroupbyCloudFormation:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable HTTP and SSH - CFN auto created. # Required
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+  MyEC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap 
+          - regionImageMap
+          - !Ref AWS::Region
+          - AMI
+      InstanceType: !Ref instanceType
+      KeyName: !Ref keyName  # please use your own key
+      SecurityGroupIds:
+        - !Ref WebServerSecGroupbyCloudFormation  # please use your own Security groups
+      Tags:
+        - Key: Name
+          Value: Project1
+      UserData: 
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash 
+
+            yum update -y
+            yum install httpd -y
+            FOLDER="https://raw.githubusercontent.com/salihpehlivan/my-projects/main/AWS/Project-101-kittens-carousel-static-website-ec2/static-web"
+            cd /var/www/html/
+            wget $FOLDER/index.html
+            wget $FOLDER/cat0.jpg
+            wget $FOLDER/cat1.jpg
+            wget $FOLDER/cat2.jpg
+            wget $FOLDER/cat3.png
+            systemctl start httpd
+            systemctl enable httpd
+ 
