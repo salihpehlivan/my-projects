@@ -21,7 +21,7 @@ cursor = connection.cursor()
 # Execute the code below only once.
 # Write sql code for initializing users table..
 drop_table = 'DROP TABLE IF EXISTS users;'
-users_table = """my
+users_table = """
 CREATE TABLE users (
   username varchar(50) NOT NULL,
   email varchar(50),
@@ -108,5 +108,5 @@ def add_email():
 
 # Add a statement to run the Flask application which can be reached from any host on port 80.
 if __name__ == '__main__':
-   app.run(debug=True)
-   #app.run(host='0.0.0.0', port=80)
+   #app.run(debug=True)
+   app.run(host='0.0.0.0', port=80)
