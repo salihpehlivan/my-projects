@@ -86,15 +86,11 @@ Resources:
             if __name__ == '__main__':
                 app.run(host='0.0.0.0', port=80)" > app.py
 
-            echo "sudo python3 app.py" > cli.sh
-            chmod +x cli.sh
-            ./cli.sh
-
+            python3 app.py
+            
 Outputs:
-
-  AppUrl:
-    Description: Url of the Application
-    Value: !Join
-      - ""
-      - - "http://"
-        - !GetAtt myEC2.DNSName 
+  WebsiteURL:
+    Value: !Sub
+      - http://${PublicAddress}
+      - PublicAddress: !GetAtt MyEC2.PublicDnsName
+    Description: Roman Numerals Converter Application URL 
