@@ -1,0 +1,161 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: |
+  This is a CFN template which automatically creates an ELB and EC2 instances and MySQL RDS server to host PhoneBook Application on it. 
+Parameters:
+  myKP:
+    Description: Select your KP
+    Type: AWS::EC2::KeyPair::KeyName
+  myInsType:
+    Description: Select the instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - t3.micro
+      - t2.nano
+      - t3.nano
+
+  mySubnets:
+    Description: Please select at least 2 subnets. 
+    Type: List<AWS::EC2::Subnet::Id>
+  myVPC:
+    Description: Please select 
+    Type: AWS::EC2::VPC::Id
+
+Mappings:
+  RegionImageMap:
+    us-east-1:
+      AMI: ami-0dc2d3e4c0f9ebd18
+    us-east-2:
+      AMI: ami-0233c2d874b811deb
+    us-west-1:
+      AMI: ami-0ed05376b59b90e46
+    us-west-2:
+      AMI: ami-0dc8f589abe99f538
+    eu-west-1:
+      AMI: ami-058b1b7fe545997ae
+  
+Resources:
+  myMySQLServerSecGroupby:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Enable MySQL Port 3306 CFN auto created" # Required
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 0.0.0.0/0
+      VpcId: !Ref myVPC
+  myEC2ServerSecGroupby:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Enable HTTP and SSH CFN auto created" # Required
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      VpcId: !Ref myVPC
+  myListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions: # Required
+        - Type: forward
+          TargetGroupArn: !Ref myTargetGrp 
+      LoadBalancerArn: !Ref myALB # Required
+      Port: 80
+      Protocol: HTTP
+
+  myTargetGrp:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 10
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 5
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 3
+      VpcId: !Ref myVPC
+
+  myALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      SecurityGroups:
+        - !GetAtt myEC2ServerSecGroupby.GroupId 
+      Subnets: !Ref mySubnets 
+      Type: application
+
+  myASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AvailabilityZones: !GetAZs 
+      DesiredCapacity: "2"
+      HealthCheckGracePeriod: 90
+      HealthCheckType: ELB
+      LaunchTemplate:
+        LaunchTemplateId: !Ref myLT
+        Version: "1"
+      MaxSize: "3" # Required
+      MinSize: "1" # Required
+      TargetGroupARNs:
+        - !Ref myTargetGrp
+
+  myCPUPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref myASG  # Required
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: 30.0
+
+
+  myLT:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        ImageId: !FindInMap
+          - RegionImageMap
+          - !Ref AWS::Region
+          - AMI
+        InstanceType: !Ref myInsType
+        KeyName: !Ref myKP
+        SecurityGroupIds:
+          - !GetAtt myEC2ServerSecGroupby.GroupId
+        UserData: !Base64 |
+          #! /bin/bash
+          yum update -y
+          yum install git -y
+          git clone https://github.com/salihpehlivan/my-projects.git
+          mkdir /home/ec2-user/phonebookdir
+          cp -R my-projects/AWS/Project-004-Phonebook-Application/* /home/ec2-user/phonebookdir
+          cd /home/ec2-user/phonebookdir
+          sudo pip3 install flask
+          sudo pip3 install flask-mysql
+          echo "DB_CONNECTION=${MyDB.Endpoint}" >> /home/ec2-user/dbserver.endpoint
+          sudo python3 /home/ec2-user/phonebookdir/phonebook-app.py
+
+
+  MyDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: '5'
+      DBInstanceClass: db.t2.small
+      Engine: MySQL
+      MasterUsername: admin
+      MasterUserPassword: Qwe023456!#
+      VPCSecurityGroups:
+      - !GetAtt myMySQLServerSecGroupby.GroupId
+
+Outputs:
+  AppUrl:
+    Description: Url of the ALB
+    Value: !Join
+      - ""
+      - - "http://"
+        - !GetAtt myALB.DNSName 
