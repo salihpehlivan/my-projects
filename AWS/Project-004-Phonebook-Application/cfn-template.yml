@@ -142,7 +142,6 @@ Resources:
               export DB_CONNECTION="${myDB.Endpoint.Address}"
               echo $DB_CONNECTION > /home/ec2-user/dbserver.endpoint
               sudo python3 /home/ec2-user/phonebookdir/phonebook-app.py
-
   myDB:
     Type: AWS::RDS::DBInstance
     Properties:
@@ -151,6 +150,7 @@ Resources:
       Engine: MySQL
       MasterUsername: admin
       MasterUserPassword: Qwe023456
+      DBName: clarusway_phonebook
       VPCSecurityGroups:
       - !GetAtt myMySQLServerSecGroupby.GroupId
 
