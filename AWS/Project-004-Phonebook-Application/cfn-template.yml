@@ -36,7 +36,7 @@ Mappings:
       AMI: ami-058b1b7fe545997ae
   
 Resources:
-  myMySQLServerSecGroupby:
+  myMySQLServerSecGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: "Enable MySQL Port 3306 CFN auto created" # Required
@@ -46,7 +46,7 @@ Resources:
           ToPort: 3306
           CidrIp: 0.0.0.0/0
       VpcId: !Ref myVPC
-  myEC2ServerSecGroupby:
+  myEC2ServerSecGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: "Enable HTTP and SSH CFN auto created" # Required
@@ -85,7 +85,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       SecurityGroups:
-        - !GetAtt myEC2ServerSecGroupby.GroupId 
+        - !GetAtt myEC2ServerSecGroup.GroupId 
       Subnets: !Ref mySubnets 
       Type: application
 
@@ -126,7 +126,7 @@ Resources:
         InstanceType: !Ref myInsType
         KeyName: !Ref myKP
         SecurityGroupIds:
-          - !GetAtt myEC2ServerSecGroupby.GroupId
+          - !GetAtt myEC2ServerSecGroup.GroupId
         UserData: 
           Fn::Base64:  
             !Sub |
@@ -146,13 +146,14 @@ Resources:
     Type: AWS::RDS::DBInstance
     Properties:
       AllocatedStorage: '5'
-      DBInstanceClass: db.t2.small
+      DBInstanceClass: db.t2.micro
       Engine: MySQL
+      EngineVersion: 8.0.19
       MasterUsername: admin
       MasterUserPassword: Qwe023456
       DBName: clarusway_phonebook
       VPCSecurityGroups:
-      - !GetAtt myMySQLServerSecGroupby.GroupId
+        - !GetAtt myMySQLServerSecGroup.GroupId
 
 Outputs:
   AppUrl:
